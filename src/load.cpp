@@ -1,0 +1,139 @@
+#include <cassert>
+
+#include "debug.hpp"
+#include "elf_on_windows.hpp"
+#include "util.hpp"
+
+namespace elf_on_windows
+{
+void _check_elf_format(Elf64_Ehdr& ehdr);
+
+ElfFile::ElfFile(std::string filename)
+  : filename(filename)
+{
+    in.open(filename, std::ios::binary);
+    if (!in) {
+        error() << "Cannot open file: " << filename << endl;
+        panic();
+    }
+
+    load_header();
+    load_dyn_info();
+}
+
+ElfFile::~ElfFile() { in.close(); }
+
+void ElfFile::load_header()
+{
+    in.seekg(0);
+    in.read((char*)&ehdr, sizeof(ehdr));
+    _check_elf_format(ehdr);
+
+    phdr.resize(ehdr.e_phnum);
+    assert(ehdr.e_phentsize == sizeof(Elf64_Phdr));
+    in.seekg(ehdr.e_phoff);
+    in.read((char*)phdr.data(), ehdr.e_phnum * ehdr.e_phentsize);
+}
+
+void ElfFile::load_dyn_info()
+{
+    for (auto p : phdr) {
+        if (p.p_type == PT_DYNAMIC) {
+            in.seekg(p.p_offset);
+            Elf64_Dyn dyn;
+            do {
+                in.read((char*)&dyn, sizeof(dyn));
+                dyn_list.push_back(dyn);
+            } while (dyn.d_tag != DT_NULL);
+        }
+    }
+
+    for (auto dyn : dyn_list) {
+        uint64_t val = dyn.d_un.d_val;
+        switch (dyn.d_tag) {
+            case DT_NEEDED: required_id.push_back(val); break;
+            case DT_STRTAB: string_table_off = val; break;
+            case DT_SYMTAB: symbol_table_off = val; break;
+            case DT_STRSZ: string_table_size = val; break;
+            case DT_SYMENT: assert(val == sizeof(Elf64_Sym)); break;
+            case DT_PLTRELSZ: rela_plt_size = val; break;
+            case DT_PLTREL: /*assert(...);*/ break;
+            case DT_JMPREL: rela_plt_off = val; break;
+            case DT_RELA: rela_dyn_off = val; break;
+            case DT_RELAENT: assert(val == sizeof(Elf64_Rela)); break;
+            case DT_RELASZ: rela_dyn_size = val; break;
+        }
+    }
+
+    in.seekg(string_table_off);
+    do {
+        auto off = (uint64_t)in.tellg() - string_table_off;
+        std::string s;
+        std::getline(in, s, '\0');
+        string_table[off] = s;
+    } while (in.tellg() != string_table_off + string_table_size);
+    for (auto req : required_id)
+        require_string.push_back(string_table[req]);
+
+    in.seekg(symbol_table_off);
+    do {
+        Elf64_Sym sym;
+        in.read((char*)&sym, sizeof(Elf64_Sym));
+        symbol_table_raw.push_back(sym);
+    } while (in.peek() != 0);
+    for (auto sym : symbol_table_raw)
+        symbol_table.push_back(ElfSymbol(*this, sym));
+
+    rela_dyn_raw.resize(rela_dyn_size / sizeof(Elf64_Rela));
+    in.seekg(rela_dyn_off);
+    in.read((char*)rela_dyn_raw.data(), rela_dyn_size);
+    for (auto rela : rela_dyn_raw)
+        rela_dyn.push_back(ElfRela(*this, rela));
+
+    rela_plt_raw.resize(rela_plt_size / sizeof(Elf64_Rela));
+    in.seekg(rela_plt_off);
+    in.read((char*)rela_plt_raw.data(), rela_plt_size);
+    for (auto rela : rela_plt_raw)
+        rela_plt.push_back(ElfRela(*this, rela));
+}
+
+ElfSymbol::ElfSymbol(const ElfFile& file, Elf64_Sym sym)
+{
+    assert(file.string_table.count(sym.st_name));
+    name = file.string_table.find(sym.st_name)->second;
+    type = (ElfSymbol::Type)ELF64_ST_TYPE(sym.st_info);
+    bind = (ElfSymbol::Bind)ELF64_ST_BIND(sym.st_info);
+}
+
+ElfRela::ElfRela(const ElfFile& file, Elf64_Rela rela)
+  : sym(file.symbol_table[ELF64_R_SYM(rela.r_info)])
+{
+    offset = rela.r_offset;
+    addend = rela.r_addend;
+    type = ELF64_R_TYPE(rela.r_info);
+}
+
+void _check_elf_format(Elf64_Ehdr& ehdr)
+{
+    for (int i = 0; i < 4; i++)
+        if (ehdr.e_ident[i] != ELFMAG[i]) {
+            error() << "`elf magic` does not match." << endl;
+            panic();
+        }
+    if (ehdr.e_ident[4] != ELFCLASS64) {
+        error() << "Must be 64-bit elf file." << endl;
+        panic();
+    }
+    if (ehdr.e_ident[5] != ELFDATA2LSB) {
+        error() << "Must be little endian." << endl;
+        panic();
+    }
+    assert(ehdr.e_ident[6] == EV_CURRENT);
+    assert(ehdr.e_ident[7] == 0);
+    assert(ehdr.e_ident[8] == 0);
+    if (ehdr.e_type != ET_EXEC && ehdr.e_type != ET_DYN) {
+        error() << "Only support executable file and dynamic file." << endl;
+        panic();
+    }
+}
+}
