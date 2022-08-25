@@ -2,6 +2,7 @@
 
 int main(int argc, char** argv)
 {
-    elf_on_windows::ElfFile file("/home/byronwan/main/source/working/elf-on-windows-1/test/sample");
+    elf_on_windows::ElfFile file("sample");
+
     return 0;
 }

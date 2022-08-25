@@ -1,15 +1,20 @@
-#ifndef ELF_ON_WINDOWS_UTIL_H
-#define ELF_ON_WINDOWS_UTIL_H
+#ifndef ELF_ON_WINDOWS_UTIL_HPP
+#define ELF_ON_WINDOWS_UTIL_HPP
+
+#include <exception>
 
 #include "debug.hpp"
-#include <cstdlib>
 
 namespace elf_on_windows
 {
-void panic()
+class serious_fault : public std::exception
+{
+};
+
+static void panic()
 {
     cerr << "Panic!" << endl;
-    exit(-1);
+    throw serious_fault {};
 }
 }
 

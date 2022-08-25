@@ -11,6 +11,7 @@ void _check_elf_format(Elf64_Ehdr& ehdr);
 ElfFile::ElfFile(std::string filename)
   : filename(filename)
 {
+    info() << "Load file: " << filename << endl;
     in.open(filename, std::ios::binary);
     if (!in) {
         error() << "Cannot open file: " << filename << endl;
@@ -19,6 +20,8 @@ ElfFile::ElfFile(std::string filename)
 
     load_header();
     load_dyn_info();
+
+    mem_img.init(*this);
 }
 
 ElfFile::~ElfFile() { in.close(); }
@@ -99,7 +102,10 @@ void ElfFile::load_dyn_info()
 
 ElfSymbol::ElfSymbol(const ElfFile& file, Elf64_Sym sym)
 {
-    assert(file.string_table.count(sym.st_name));
+    if (!file.string_table.count(sym.st_name)) {
+        warning() << "Cannot find string indexed " << sym.st_name << ", skipped" << endl;
+        return;
+    }
     name = file.string_table.find(sym.st_name)->second;
     type = (ElfSymbol::Type)ELF64_ST_TYPE(sym.st_info);
     bind = (ElfSymbol::Bind)ELF64_ST_BIND(sym.st_info);
@@ -129,8 +135,6 @@ void _check_elf_format(Elf64_Ehdr& ehdr)
         panic();
     }
     assert(ehdr.e_ident[6] == EV_CURRENT);
-    assert(ehdr.e_ident[7] == 0);
-    assert(ehdr.e_ident[8] == 0);
     if (ehdr.e_type != ET_EXEC && ehdr.e_type != ET_DYN) {
         error() << "Only support executable file and dynamic file." << endl;
         panic();

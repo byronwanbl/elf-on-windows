@@ -1,5 +1,5 @@
-#ifndef ELF_ON_WINDOWS_H
-#define ELF_ON_WINDOWS_H
+#ifndef ELF_ON_WINDOWS_HPP
+#define ELF_ON_WINDOWS_HPP
 
 #include <fstream>
 #include <map>
@@ -10,9 +10,36 @@
 
 namespace elf_on_windows
 {
+struct Range
+{
+    uint64_t begin, size;
+};
 
 class ElfSymbol;
 class ElfRela;
+class WindowsLibrary;
+
+class ElfFile;
+
+class ElfMemImage
+{
+public:
+    static const uint64_t AUTO_BASE = 0xffffffffffffffff;
+
+    uint64_t base;
+    uint64_t alloc_begin, alloc_size;
+    std::vector<Range> using_memory;
+
+    ElfMemImage();
+    void init(ElfFile&);
+    ~ElfMemImage();
+
+private:
+    void alloc();
+    void load(ElfFile&);
+
+    void free();
+};
 
 class ElfFile
 {
@@ -39,8 +66,14 @@ public:
     std::vector<Elf64_Rela> rela_dyn_raw, rela_plt_raw;
     std::vector<ElfRela> rela_dyn, rela_plt;
 
+    ElfMemImage mem_img;
+
     ElfFile(std::string filename);
     ~ElfFile();
+
+    void dynamic_link();
+    // void dynamic_link(WindowsLibrary);
+    // void dynamic_link(ElfFile);
 
 private:
     void load_header();
@@ -82,6 +115,12 @@ public:
     uint32_t type;
 
     ElfRela(const ElfFile&, Elf64_Rela);
+};
+
+
+class WindowsLibrary
+{
+    void* handle;
 };
 }
 
