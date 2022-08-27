@@ -47,6 +47,7 @@ void ElfMemImage::alloc()
             error() << "Alloc virtual memory failed, GetLastError() = " << GetLastError() << endl;
             panic();
         }
+        info() << "base = " << hex(base) << endl;
     } else {
         info() << "Alloc virtual memory: " << range(alloc_begin, alloc_size) << endl;
         auto addr = VirtualAlloc(
@@ -63,7 +64,8 @@ void ElfMemImage::load(ElfFile& file)
     for (auto phdr : file.phdr) {
         if (phdr.p_type == PT_LOAD) {
             info() << "Load " << hex(phdr.p_offset) << " -> " << range(phdr.p_vaddr, phdr.p_memsz)
-                   << endl;
+                   << ", flags: " << (phdr.p_flags & PF_R ? "R" : "")
+                   << (phdr.p_flags & PF_W ? "W" : "") << (phdr.p_flags & PF_X ? "X" : "") << endl;
             file.in.seekg(phdr.p_offset);
             file.in.read((char*)phdr.p_vaddr + base, phdr.p_filesz);
         }

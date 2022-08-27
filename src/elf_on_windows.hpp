@@ -71,10 +71,11 @@ public:
     ElfFile(std::string filename);
     ~ElfFile();
 
-    void dynamic_link();
+    void test_dynamic_link();
     // void dynamic_link(WindowsLibrary);
     // void dynamic_link(ElfFile);
 
+    void exec();
 private:
     void load_header();
     void load_dyn_info();

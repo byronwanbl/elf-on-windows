@@ -27,10 +27,10 @@ struct Range
 };
 }
 
-static std::ostream& debug() { return std::cerr << "[DEBUG] "; }
-static std::ostream& info() { return std::cerr << "[INFO] "; }
+static std::ostream& debug() { return std::cerr << "[DEBUG]   "; }
+static std::ostream& info() { return std::cerr << "[INFO]    "; }
 static std::ostream& warning() { return std::cerr << "[WARNING] "; }
-static std::ostream& error() { return std::cerr << "[ERROR] "; }
+static std::ostream& error() { return std::cerr << "[ERROR]   "; }
 using std::cerr;
 using std::endl;
 
