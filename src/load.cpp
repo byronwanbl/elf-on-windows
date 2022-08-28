@@ -8,7 +8,7 @@ namespace elf_on_windows
 {
 void _check_elf_format(Elf64_Ehdr& ehdr);
 
-ElfFile::ElfFile(std::string filename)
+ElfFile::ElfFile(const std::string& filename)
   : filename(filename)
 {
     info() << "Load file: " << filename << endl;
@@ -116,7 +116,7 @@ ElfRela::ElfRela(const ElfFile& file, Elf64_Rela rela)
 {
     offset = rela.r_offset;
     addend = rela.r_addend;
-    type = ELF64_R_TYPE(rela.r_info);
+    type = (ElfRela::Type)ELF64_R_TYPE(rela.r_info);
 }
 
 void _check_elf_format(Elf64_Ehdr& ehdr)

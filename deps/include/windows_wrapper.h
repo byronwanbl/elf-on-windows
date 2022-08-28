@@ -33,6 +33,11 @@ const uint32_t PAGE_EXECUTE_READWRITE = 0x40;
 
 uint32_t GetLastError();
 
+typedef void* HMODULE;
+
+HMODULE LoadLibraryA(const char* lpLibFileName);
+bool FreeLibrary(HMODULE hLibModule);
+void* GetProcAddress(HMODULE hModule, const char* lpProcName);
 #endif
 
 #endif

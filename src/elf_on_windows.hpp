@@ -34,6 +34,10 @@ public:
     void init(ElfFile&);
     ~ElfMemImage();
 
+    bool exist(uint64_t);
+    uint64_t fixed(uint64_t);
+    uint64_t& get_fixed(uint64_t);
+
 private:
     void alloc();
     void load(ElfFile&);
@@ -68,14 +72,15 @@ public:
 
     ElfMemImage mem_img;
 
-    ElfFile(std::string filename);
+    ElfFile(const std::string&);
     ~ElfFile();
 
-    void test_dynamic_link();
-    // void dynamic_link(WindowsLibrary);
+    void pre_dynamic_link();
+    void dynamic_link(WindowsLibrary&);
     // void dynamic_link(ElfFile);
 
     void exec();
+
 private:
     void load_header();
     void load_dyn_info();
@@ -113,7 +118,11 @@ class ElfRela
 public:
     const ElfSymbol& sym;
     uint64_t offset, addend;
-    uint32_t type;
+    enum struct Type
+    {
+        GLOBAL_DAT = 6,
+        JUMP_SLOT = 7
+    } type;
 
     ElfRela(const ElfFile&, Elf64_Rela);
 };
@@ -121,8 +130,30 @@ public:
 
 class WindowsLibrary
 {
-    void* handle;
+public:
+    std::string filename;
+    void* module;
+
+    WindowsLibrary(const std::string&);
+    ~WindowsLibrary();
+    uint64_t get_symbol(const std::string&);
 };
+
+class CygwinDLL
+{
+public:
+    WindowsLibrary cygwin1_dll;
+    WindowsLibrary cygstdcxx_6_dll;
+    WindowsLibrary cyggcc_s_seh_1_dll;
+
+    CygwinDLL();
+    void link_to(ElfFile&);
+    void init();
+    ~CygwinDLL();
+};
+
+uint64_t generate_call_wrapper_windows_to_linux(uint64_t);
+uint64_t call_linux_func(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 }
 
 #endif

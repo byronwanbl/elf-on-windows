@@ -4,10 +4,8 @@ import subprocess
 import re
 
 
-src = "src/calling_convention_convert.S"
-target = "src/calling_convention_convert.hex"
-# from_ = "0x40"
-# size = "0x6b"
+src = "src/call_wrapper_linux_to_windows.S"
+target = "src/call_wrapper_linux_to_windows.hex"
 
 subprocess.run(f"as {src} -o /tmp/a.out", check=True, shell=True)
 

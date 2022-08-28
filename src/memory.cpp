@@ -75,4 +75,13 @@ void ElfMemImage::load(ElfFile& file)
 ElfMemImage::~ElfMemImage() { free(); }
 
 void ElfMemImage::free() { VirtualFree((void*)(base == 0 ? alloc_begin : base), 0, MEM_RELEASE); }
+
+bool ElfMemImage::exist(uint64_t addr)
+{
+    return addr >= alloc_begin && addr < alloc_begin + alloc_size;
+}
+
+uint64_t ElfMemImage::fixed(uint64_t addr) { return addr + base; }
+
+uint64_t& ElfMemImage::get_fixed(uint64_t addr) { return *(uint64_t*)fixed(addr); }
 }

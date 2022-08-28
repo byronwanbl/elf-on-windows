@@ -2,8 +2,9 @@
 
 int main(int argc, char** argv)
 {
-    elf_on_windows::ElfFile file("sample");
-    file.test_dynamic_link();
+    elf_on_windows::ElfFile file("sample2");
+    elf_on_windows::CygwinDLL cygwin;
+    cygwin.link_to(file);
     file.exec();
 
     return 0;

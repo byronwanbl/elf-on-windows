@@ -3,7 +3,8 @@ import os
 import sys
 
 key = "KEY998244353"
-default_files = ("./build/mingw/x86_64/release/elf-on-windows.exe", "./test/sample")
+default_files = ("./build/mingw/x86_64/release/elf-on-windows.exe",
+                 "./test/sample1", "./test/sample2")
 
 if len(sys.argv) > 1:
     files = sys.argv[1:]
