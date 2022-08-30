@@ -10,37 +10,69 @@ namespace elf_on_windows
 {
 void ElfFile::pre_dynamic_link()
 {
-    for (auto rela : rela_dyn) {
-        if (rela.type == ElfRela::Type::GLOBAL_DAT && mem_img.exist(rela.offset))
-            mem_img.get_fixed(rela.offset) = 0;
+    for (auto r : rela) {
+        if ((r.type == ElfRela::Type::GLOBAL_DAT || r.type == ElfRela::Type::JUMP_SLOT) &&
+            mem_img.exist(r.offset))
+            mem_img.get_fixed(r.offset) = 0;
+        else if (r.type == ElfRela::Type::COPY && mem_img.exist(r.offset))
+            mem_img.get_fixed(r.offset) = r.sym.value;
     }
-    for (auto rela : rela_plt) {
-        if (rela.type == ElfRela::Type::JUMP_SLOT && mem_img.exist(rela.offset))
-            mem_img.get_fixed(rela.offset) = 0;
+}
+
+void ElfFile::check_dynamic_link()
+{
+    for (auto r : rela) {
+        if ((r.type == ElfRela::Type::GLOBAL_DAT || r.type == ElfRela::Type::JUMP_SLOT) &&
+            mem_img.exist(r.offset)) {
+                if (mem_img.get_fixed(r.offset) == 0) {
+                    warning() << "Does not link " << r.sym.name << endl;
+                }
+            }
     }
 }
 
 void ElfFile::dynamic_link(WindowsLibrary& lib)
 {
-    for (auto rela : rela_dyn) {
-        if (rela.type == ElfRela::Type::GLOBAL_DAT && mem_img.exist(rela.offset)) {
-            auto proc = lib.get_symbol(rela.sym.name);
-            if (proc) {
-                mem_img.get_fixed(rela.offset) = proc;
-                debug() << "Linked " << rela.sym.name << " from " << lib.filename << endl;
+    for (auto r : rela) {
+        if ((r.type == ElfRela::Type::GLOBAL_DAT || r.type == ElfRela::Type::JUMP_SLOT) &&
+            mem_img.exist(r.offset)) {
+            auto addr = lib.get_symbol(r.sym.name);
+            if (addr) {
+                debug() << "Link " << r.sym.name << " from " << lib.filename << endl;
+                mem_img.get_fixed(r.offset) = generate_call_wrapper_linux_to_windows(
+                  addr, mem_img.fixed(mem_img.alloc_begin), mem_img.alloc_size);
             }
+        } else if (r.type == ElfRela::Type::COPY && mem_img.exist(r.offset)) {
+            auto addr = lib.get_symbol(r.sym.name);
+            if (addr) {
+                debug() << "Link " << r.sym.name << " , size = " << hex(r.sym.size) << ", from "
+                        << lib.filename << endl;
+                auto this_addr = mem_img.fixed(r.offset);
+                std::copy((uint8_t*)addr, (uint8_t*)(addr + r.sym.size), (uint8_t*)this_addr);
+            }
+        }
+    }
+}
+
+void ElfFile::dynamic_link(const std::string& name, uint64_t addr)
+{
+    for (auto r : rela) {
+        if ((r.type == ElfRela::Type::GLOBAL_DAT || r.type == ElfRela::Type::JUMP_SLOT) &&
+            mem_img.exist(r.offset) && r.sym.name == name) {
+            debug() << "Link " << r.sym.name << " , using custom function, addr = " << hex(addr)
+                    << endl;
+            mem_img.get_fixed(r.offset) = generate_call_wrapper_linux_to_windows(
+              addr, mem_img.fixed(mem_img.alloc_begin), mem_img.alloc_size);
+            return;
+        } else if (r.type == ElfRela::Type::COPY && mem_img.exist(r.offset) && r.sym.name == name) {
+            debug() << "Link " << r.sym.name << " , using custom function, addr = " << hex(addr)
+                    << endl;
+            mem_img.get_fixed(r.offset) = addr;
+            return;
         }
     }
 
-    for (auto rela : rela_plt) {
-        if (rela.type == ElfRela::Type::JUMP_SLOT && mem_img.exist(rela.offset)) {
-            auto proc = lib.get_symbol(rela.sym.name);
-            if (proc) {
-                mem_img.get_fixed(rela.offset) = proc;
-                debug() << "Linked " << rela.sym.name << " from " << lib.filename << endl;
-            }
-        }
-    }
+    warning() << "Cannot found symbol " << name << endl;
 }
 
 WindowsLibrary::WindowsLibrary(const std::string& filename)

@@ -6,6 +6,28 @@ _start:
     push %rdx
     push %rsi
     push %rdi
+
+    movabs $0x0101010101010101, %rcx # Check if call by linux
+    movabs $0x0202020202020202, %rdx # %rcx <= %rax < %rdx => Call by linux
+    cmp %rax, %rcx
+    ja .run_directly
+    cmp %rax, %rdx
+    jbe .run_directly
+    jmp .covert
+
+.run_directly:
+    pop %rdi
+    pop %rsi
+    pop %rdx
+    pop %rcx
+    pop %r8
+    pop %r9
+    push %rax
+    movabs $0x0303030303030303, %rax # Inject target function address
+    callq *%rax
+    ret
+
+.covert:
     pop %rcx
     pop %rdx
     pop %r8
@@ -28,7 +50,7 @@ _start:
                           # And it dose not align %rsp to 16-bit.
 
     movq %rdi, 0x40(%rsp) # Store %rip
-    movabs $0x00000000, %rax # Inject target function address
+    movabs $0x0000000000000000, %rax # Inject target function address
     callq *%rax
 
     addq $0x10, %rsp # Recover stack
@@ -37,8 +59,8 @@ _start:
     movq %rsp, %rsi
     addq $0x30, %rsp
 .loop1:
-    movq -8(%rsp), %rax
-    movq %rax, (%rsp)
+    movq -8(%rsp), %rdi
+    movq %rdi, (%rsp)
     subq $0x08, %rsp
     cmp %rsp, %rsi
     jne .loop1

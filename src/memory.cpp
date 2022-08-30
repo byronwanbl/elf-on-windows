@@ -47,7 +47,7 @@ void ElfMemImage::alloc()
             error() << "Alloc virtual memory failed, GetLastError() = " << GetLastError() << endl;
             panic();
         }
-        info() << "base = " << hex(base) << endl;
+        debug() << "base = " << hex(base) << endl;
     } else {
         info() << "Alloc virtual memory: " << range(alloc_begin, alloc_size) << endl;
         auto addr = VirtualAlloc(

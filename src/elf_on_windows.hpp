@@ -17,9 +17,11 @@ struct Range
 
 class ElfSymbol;
 class ElfRela;
+class Environment;
 class WindowsLibrary;
 
 class ElfFile;
+class MsysDLL;
 
 class ElfMemImage
 {
@@ -58,17 +60,22 @@ public:
     std::vector<uint64_t> required_id;
     std::vector<std::string> require_string;
 
-    uint64_t string_table_off, string_table_size;
+    uint64_t string_table_off = 0, string_table_size = 0;
     std::map<uint32_t, std::string> string_table;
 
-    uint64_t symbol_table_off;
+    uint64_t symbol_table_off = 0;
     std::vector<Elf64_Sym> symbol_table_raw;
     std::vector<ElfSymbol> symbol_table;
 
-    uint64_t rela_plt_off, rela_plt_size;
-    uint64_t rela_dyn_off, rela_dyn_size;
+    uint64_t rela_plt_off = 0, rela_plt_size = 0;
+    uint64_t rela_dyn_off = 0, rela_dyn_size = 0;
     std::vector<Elf64_Rela> rela_dyn_raw, rela_plt_raw;
-    std::vector<ElfRela> rela_dyn, rela_plt;
+    std::vector<ElfRela> rela;
+
+    uint64_t init_1 = 0, init_arr_addr = 0, init_arr_size = 0;
+    std::vector<uint64_t> init_arr;
+    uint64_t fini_1 = 0, fini_arr_addr = 0, fini_arr_size = 0;
+    std::vector<uint64_t> fini_arr;
 
     ElfMemImage mem_img;
 
@@ -77,19 +84,26 @@ public:
 
     void pre_dynamic_link();
     void dynamic_link(WindowsLibrary&);
+    void dynamic_link(const std::string&, uint64_t);
+    void check_dynamic_link();
+
+    void dynamic_link_extra_func();
     // void dynamic_link(ElfFile);
 
-    void exec();
+    void exec_with_msys(Environment*, MsysDLL*);
 
 private:
     void load_header();
     void load_dyn_info();
+    void load_from_mem();
 };
 
 class ElfSymbol
 {
 public:
     std::string name;
+    uint64_t size;
+    uint64_t value;
 
     enum struct Type
     {
@@ -120,6 +134,7 @@ public:
     uint64_t offset, addend;
     enum struct Type
     {
+        COPY = 5,
         GLOBAL_DAT = 6,
         JUMP_SLOT = 7
     } type;
@@ -127,6 +142,16 @@ public:
     ElfRela(const ElfFile&, Elf64_Rela);
 };
 
+class Environment
+{
+public:
+    int argc;
+    char** argv;
+    char** env_var_raw;
+
+    Environment(int, char**);
+    ~Environment();
+};
 
 class WindowsLibrary
 {
@@ -139,20 +164,19 @@ public:
     uint64_t get_symbol(const std::string&);
 };
 
-class CygwinDLL
+class MsysDLL
 {
 public:
-    WindowsLibrary cygwin1_dll;
-    WindowsLibrary cygstdcxx_6_dll;
-    WindowsLibrary cyggcc_s_seh_1_dll;
+    WindowsLibrary libc;
+    WindowsLibrary libstdcxx;
+    WindowsLibrary libgcc;
 
-    CygwinDLL();
+    MsysDLL();
     void link_to(ElfFile&);
-    void init();
-    ~CygwinDLL();
+    ~MsysDLL();
 };
 
-uint64_t generate_call_wrapper_windows_to_linux(uint64_t);
+uint64_t generate_call_wrapper_linux_to_windows(uint64_t, uint64_t, uint64_t);
 uint64_t call_linux_func(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 }
 

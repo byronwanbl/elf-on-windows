@@ -20,8 +20,8 @@ ElfFile::ElfFile(const std::string& filename)
 
     load_header();
     load_dyn_info();
-
     mem_img.init(*this);
+    load_from_mem();
 }
 
 ElfFile::~ElfFile() { in.close(); }
@@ -65,6 +65,12 @@ void ElfFile::load_dyn_info()
             case DT_RELA: rela_dyn_off = val; break;
             case DT_RELAENT: assert(val == sizeof(Elf64_Rela)); break;
             case DT_RELASZ: rela_dyn_size = val; break;
+            case DT_INIT: init_1 = val;
+            case DT_INIT_ARRAY: init_arr_addr = val;
+            case DT_INIT_ARRAYSZ: init_arr_size = val;
+            case DT_FINI: fini_1 = val;
+            case DT_FINI_ARRAY: fini_arr_addr = val;
+            case DT_FINI_ARRAYSZ: fini_arr_size = val;
         }
     }
 
@@ -90,25 +96,40 @@ void ElfFile::load_dyn_info()
     rela_dyn_raw.resize(rela_dyn_size / sizeof(Elf64_Rela));
     in.seekg(rela_dyn_off);
     in.read((char*)rela_dyn_raw.data(), rela_dyn_size);
-    for (auto rela : rela_dyn_raw)
-        rela_dyn.push_back(ElfRela(*this, rela));
+    for (auto r : rela_dyn_raw)
+        rela.push_back(ElfRela(*this, r));
 
     rela_plt_raw.resize(rela_plt_size / sizeof(Elf64_Rela));
     in.seekg(rela_plt_off);
     in.read((char*)rela_plt_raw.data(), rela_plt_size);
-    for (auto rela : rela_plt_raw)
-        rela_plt.push_back(ElfRela(*this, rela));
+    for (auto r : rela_plt_raw)
+        rela.push_back(ElfRela(*this, r));
+}
+
+void ElfFile::load_from_mem()
+{
+    init_arr.resize(init_arr_size / sizeof(void*));
+    std::copy(&mem_img.get_fixed(init_arr_addr),
+      &mem_img.get_fixed(init_arr_addr + init_arr_size),
+      init_arr.data());
+    fini_arr.resize(fini_arr_size / sizeof(void*));
+    std::copy(&mem_img.get_fixed(fini_arr_addr),
+      &mem_img.get_fixed(fini_arr_addr + fini_arr_size),
+      fini_arr.data());
 }
 
 ElfSymbol::ElfSymbol(const ElfFile& file, Elf64_Sym sym)
 {
     if (!file.string_table.count(sym.st_name)) {
         warning() << "Cannot find string indexed " << sym.st_name << ", skipped" << endl;
+        name = "<UNKNOWN>";
         return;
     }
     name = file.string_table.find(sym.st_name)->second;
     type = (ElfSymbol::Type)ELF64_ST_TYPE(sym.st_info);
     bind = (ElfSymbol::Bind)ELF64_ST_BIND(sym.st_info);
+    size = sym.st_size;
+    value = sym.st_value;
 }
 
 ElfRela::ElfRela(const ElfFile& file, Elf64_Rela rela)
