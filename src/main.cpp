@@ -2,7 +2,7 @@
 
 int main(int argc, char** argv)
 {
-    elf_on_windows::ElfFile file("test/sample1");
+    elf_on_windows::ElfFile file("test/sample2");
     elf_on_windows::MsysDLL msys;
     elf_on_windows::Environment env((size_t)argc, argv);
     file.pre_dynamic_link();

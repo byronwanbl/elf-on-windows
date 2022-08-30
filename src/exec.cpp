@@ -36,6 +36,5 @@ void ElfFile::dynamic_link_extra_func()
     dynamic_link("__libc_start_main", (uint64_t)libc_start_main);
     dynamic_link("__gmon_start__", (uint64_t)null_function);
     dynamic_link("__libc_single_threaded", (uint64_t)libc_single_threaded);
-    dynamic_link("__isoc99_scanf", (uint64_t)scanf);
 }
 }
