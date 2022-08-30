@@ -37,7 +37,7 @@ public:
     ~ElfMemImage();
 
     bool exist(uint64_t);
-    uint64_t fixed(uint64_t);
+    uint64_t fixed_addr(uint64_t);
     uint64_t& get_fixed(uint64_t);
 
 private:
@@ -60,15 +60,15 @@ public:
     std::vector<uint64_t> required_id;
     std::vector<std::string> require_string;
 
-    uint64_t string_table_off = 0, string_table_size = 0;
+    uint64_t string_table_addr = 0, string_table_size = 0;
     std::map<uint32_t, std::string> string_table;
 
-    uint64_t symbol_table_off = 0;
+    uint64_t symbol_table_addr = 0;
     std::vector<Elf64_Sym> symbol_table_raw;
     std::vector<ElfSymbol> symbol_table;
 
-    uint64_t rela_plt_off = 0, rela_plt_size = 0;
-    uint64_t rela_dyn_off = 0, rela_dyn_size = 0;
+    uint64_t rela_plt_addr = 0, rela_plt_size = 0;
+    uint64_t rela_dyn_addr = 0, rela_dyn_size = 0;
     std::vector<Elf64_Rela> rela_dyn_raw, rela_plt_raw;
     std::vector<ElfRela> rela;
 
@@ -84,7 +84,8 @@ public:
 
     void pre_dynamic_link();
     void dynamic_link(WindowsLibrary&);
-    void dynamic_link(const std::string&, uint64_t);
+    void dynamic_link_func(const std::string&, uint64_t, bool force=false);
+    void dynamic_link_variable(const std::string&, uint64_t, bool force=false);
     void check_dynamic_link();
 
     void dynamic_link_extra_func();
@@ -95,7 +96,6 @@ public:
 private:
     void load_header();
     void load_dyn_info();
-    void load_from_mem();
 };
 
 class ElfSymbol

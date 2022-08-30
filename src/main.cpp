@@ -2,9 +2,15 @@
 
 int main(int argc, char** argv)
 {
-    elf_on_windows::ElfFile file("test/sample2");
+    std::string filename = "test/lambda-hs-exe";
+    if (argc > 1) {
+        filename = argv[1];
+    }
+
+    elf_on_windows::ElfFile file(filename);
     elf_on_windows::MsysDLL msys;
-    elf_on_windows::Environment env((size_t)argc, argv);
+    elf_on_windows::Environment env((size_t)argc - 1, argv + 1);
+
     file.pre_dynamic_link();
     msys.link_to(file);
     file.dynamic_link_extra_func();

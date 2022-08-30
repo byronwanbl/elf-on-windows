@@ -7,14 +7,10 @@
 
 namespace elf_on_windows
 {
-class serious_fault : public std::exception
-{
-};
-
 static void panic()
 {
     cerr << "Panic!" << endl;
-    throw serious_fault {};
+    exit(-1);
 }
 }
 
