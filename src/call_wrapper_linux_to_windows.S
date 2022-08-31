@@ -2,8 +2,8 @@ _start:
     movq (%rsp), %rax
     push %rbp
     movq %rsp, %rbp
-    subq $0x100, %rsp
-    andq $~0x0f, %rsp
+    subq $0x100, %rsp # More 256 bytes.
+    andq $~0x0f, %rsp # Align to 16 bits.
     push %r9 # Push 5th and 6th argument.
     push %r8
     push %rcx
@@ -19,7 +19,7 @@ _start:
     jbe .run_directly
     jmp .covert
 
-.run_directly:
+.run_directly: # Run directly, do not modify arguments
     pop %rdi
     pop %rsi
     pop %rdx
@@ -40,6 +40,6 @@ _start:
     callq *%rax
 
 .ret:
-    movq %rbp, %rsp
+    movq %rbp, %rsp # Recover stack.
     popq %rbp
     ret

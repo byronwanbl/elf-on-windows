@@ -7,7 +7,5 @@ build/
 
 .vscode
 
-*.hex
-
 test/sample1
 test/sample2
